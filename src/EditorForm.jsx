@@ -60,6 +60,7 @@ function EditorForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);  // Iniciar el estado de carga
     
     try {
       const token = localStorage.getItem('token');
@@ -67,12 +68,25 @@ function EditorForm() {
         navigate('/login');
         return;
       }
-
+    
+      // Verificar y decodificar el token
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        throw new Error('Token inválido');
+      }
+      
+      const decodedToken = JSON.parse(atob(token.split('.')[1]));
+      if (!decodedToken || !decodedToken.id) {
+        throw new Error('Token no contiene información del usuario');
+      }
+      const userId = decodedToken.id;
+    
       let validatedForm;
       try {
         validatedForm = validateForm();
       } catch (validationError) {
         setError(validationError.message);
+        setLoading(false);  // Detener el estado de carga si hay error de validación
         return;
       }
       
@@ -80,56 +94,33 @@ function EditorForm() {
         ? `http://localhost:3001/api/posts/${id}`
         : 'http://localhost:3001/api/posts';
       const method = id ? 'PUT' : 'POST';
-
-      setLoading(true);
-
-      console.log('Enviando datos al servidor:', {
-        url,
-        method,
-        validatedForm
-      });
-
+    
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(validatedForm),
+        body: JSON.stringify({
+          titulo: validatedForm.title,
+          descripcion: validatedForm.description,
+          contenido: validatedForm.content,
+          userId: userId
+        }),
       });
-
-      console.log('Respuesta del servidor:', {
-        status: res.status,
-        statusText: res.statusText,
-        headers: Object.fromEntries(res.headers.entries())
-      });
-
-      let data;
-      try {
-        const responseText = await res.text();
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch (parseError) {
-        console.error('Error al parsear la respuesta JSON:', parseError);
-        throw new Error('Error al procesar la respuesta del servidor');
-      }
-      
+    
       if (!res.ok) {
-        const errorMessage = data.message || `Error ${res.status}: ${res.statusText}`;
-        console.error('Error detallado:', {
-          status: res.status,
-          message: errorMessage,
-          data: data
-        });
-        throw new Error(errorMessage);
+        const errorData = await res.json();
+        throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
       }
-
-      console.log('Respuesta del servidor:', data);
-
+    
+      // Redirigir sin recargar la página
       navigate('/editor');
     } catch (err) {
       setError(err.message);
+      console.error('Error al crear/actualizar el post:', err);
     } finally {
-      setLoading(false);
+      setLoading(false);  // Asegurar que el estado de carga se detenga
     }
   };
 
@@ -137,11 +128,10 @@ function EditorForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  if (loading) return <div className="container mt-5">Cargando...</div>;
-
   return (
     <div className="container mt-5">
       <h2 className="mb-4">{id ? 'Editar Post' : 'Nuevo Post'}</h2>
+      {loading && <div className="alert alert-info">Guardando cambios...</div>}
       <form onSubmit={handleSubmit} className="border p-4 rounded bg-light">
         <div className="mb-3">
           <label className="form-label">Título</label>
