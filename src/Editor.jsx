@@ -8,16 +8,6 @@ function Editor() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    
-    fetchPosts();
-  }, []);
-
   const fetchPosts = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -26,7 +16,6 @@ function Editor() {
         return;
       }
   
-      // Decodificar el token para obtener el ID del usuario
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
       const userId = decodedToken.userId;
   
@@ -45,6 +34,10 @@ function Editor() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const handleDelete = async (postId) => {
     if (!window.confirm('¿Estás seguro de que quieres eliminar este post?')) return;
@@ -111,8 +104,8 @@ function Editor() {
 
   return (
     <Routes>
-      <Route path="/new" element={<EditorForm />} />
-      <Route path="/:id" element={<EditorForm />} />
+      <Route path="/new" element={<EditorForm onPostCreated={fetchPosts} />} />
+      <Route path="/:id" element={<EditorForm onPostUpdated={fetchPosts} />} />
       <Route path="/" element={
         <div className="container mt-5">
       <div className="d-flex justify-content-between align-items-center mb-4">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-function EditorForm() {
+function EditorForm({ onPostCreated, onPostUpdated }) {
   const [form, setForm] = useState({ title: '', description: '', content: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -114,7 +114,13 @@ function EditorForm() {
         throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
       }
     
-      // Redirigir sin recargar la página
+      // Llamar a la función de actualización correspondiente
+      if (id) {
+        onPostUpdated?.();
+      } else {
+        onPostCreated?.();
+      }
+      
       navigate('/editor');
     } catch (err) {
       setError(err.message);
